@@ -20,7 +20,9 @@ void PIController_init(PIController *controller, uint32_t kp, uint32_t ki){
 }
 
 uint16_t PIController_update(PIController *controller, uint32_t speed_in){
+  // Update step via bilinear transformation
   controller->prev_out += (controller->kpi_plus * (SPEED_REF - speed_in) + controller->kpi_minus * controller->prev_error)>>K_SHIFT;
   controller->prev_error = SPEED_REF - speed_in;
+  // possibly redundant
   return controller->prev_out;
 }

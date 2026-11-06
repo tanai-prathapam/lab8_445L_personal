@@ -13,8 +13,8 @@
 // Convert the time step (in seconds) to floating point binary, then 
 // store the significand (including the leading 1!) in T_S and the 
 // exponent in T_S_SHIFT.  
-#define T_S 67
-#define T_S_SHIFT 0
+#define T_S 0x1A
+#define T_S_SHIFT 8
 // The target speed. Keep it in parity with the speed measurement of the tachometer. 
 #define SPEED_REF 0
 
