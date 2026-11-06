@@ -10,7 +10,6 @@
 #include <stdint.h>
 #include <ti/devices/msp/msp.h>
 #include "PIController.h"
-#include "dq_controller.h"
 
 void PIController_init(PIController *controller, uint32_t kp, uint32_t ki){
   // kp + (Ts/2) * ki; stored separate from division for numerical stability

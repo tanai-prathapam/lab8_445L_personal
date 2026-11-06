@@ -17,6 +17,8 @@
 #include "PIController.h"
 #include "../inc/CLI.h"
 
+#define DEBUG_MODE 4
+
 uint32_t Duty,Period,Change;
 // Motor
 //   PB4  Motor_PWML=PB.4/TIMA1_C0;
@@ -64,7 +66,8 @@ uint32_t Duty,Period,Change;
 // Insert J6: Connects PB26 to red LED2
 // Insert J7: Connects PB27 to green LED2
 uint32_t Bump;
-int main1(void){ // use main1 to test bump switches
+#if DEBUG_MODE == 1
+int main(void){ // use main1 to test bump switches
   __disable_irq();
   LaunchPad_Init();
   Clock_Init_HFXT_40_80MHz(0);  // 0.005% accurate running off external crystal oscillator
@@ -74,8 +77,8 @@ int main1(void){ // use main1 to test bump switches
     Bump = Bump_In();
   }
 }
-
-int main2(void){ // use main2 to test motors and OLED
+#elif DEBUG_MODE == 2
+int main(void){ // use main2 to test motors and OLED
   uint32_t sw2,lasts2;
 
   __disable_irq();
@@ -123,8 +126,8 @@ int main2(void){ // use main2 to test motors and OLED
   }
 }
 uint32_t Left,Center,Right;
-
-int main3(void){ // use main3 to test OLED and IR sensors
+#elif DEBUG_MODE == 3
+int main(void){ // use main3 to test OLED and IR sensors
   __disable_irq();
   LaunchPad_Init();
   Clock_Init_HFXT_40_80MHz(0);  // 0.005% accurate running off external crystal oscillator
@@ -163,7 +166,7 @@ int main3(void){ // use main3 to test OLED and IR sensors
     SSD1306_OutUHex7(Bump);
   }
 }
-
+#elif DEBUG_MODE == 4
 int main(void){ // use main5 to test CLI interface
   
   __disable_irq();
@@ -176,8 +179,8 @@ int main(void){ // use main5 to test CLI interface
     CLI_Process();
   }
 }
-
-int main6(void){ // use main4 to run Lab 8
+#else
+int main(void){ // use main4 to run Lab 8
   
   __disable_irq();
   LaunchPad_Init();
@@ -192,6 +195,7 @@ int main6(void){ // use main4 to run Lab 8
   while(1){
   }
 }
+#endif
 // runs in real time at 100 Hz
 void TIMG0_IRQHandler(void){
   if((TIMG0->CPU_INT.IIDX) == 1){ // this will acknowledge
