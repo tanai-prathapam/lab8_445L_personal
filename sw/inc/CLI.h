@@ -15,6 +15,11 @@
 
 /*****Note to students, feel free to change any or all of this ******/
 
+#ifndef LAB8_CLI_H
+#define LAB8_CLI_H
+
+#define CLI_MAX_SPEED_RPM 200 // change to more accurate upper limit
+
 //-------------------   CLI_Init  -------------------
 // Configure UART0 for serial full duplex operation
 // Inputs: none
@@ -36,3 +41,5 @@ void CLI_SystemStatus(void);
 //      cmd_state == 4  -> Enter Ki1
 //      cmd_state == 5  -> Enter Ki1
 void CLI_Process(void);
+
+#endif

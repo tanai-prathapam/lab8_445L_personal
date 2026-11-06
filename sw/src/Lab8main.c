@@ -164,7 +164,20 @@ int main3(void){ // use main3 to test OLED and IR sensors
   }
 }
 
-int main(void){ // use main4 to run Lab 8
+int main(void){ // use main5 to test CLI interface
+  
+  __disable_irq();
+  LaunchPad_Init();
+  Clock_Init_HFXT_40_80MHz(0);  // 0.005% accurate running off external crystal oscillator
+ 
+   __enable_irq();
+   CLI_Init();
+  while(1){
+    CLI_Process();
+  }
+}
+
+int main6(void){ // use main4 to run Lab 8
   
   __disable_irq();
   LaunchPad_Init();
