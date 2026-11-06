@@ -14,7 +14,7 @@
 #include "../inc/ADC.h"
 #include "../inc/Timer.h"
 #include "../inc/Tachometer.h"
-#include "../inc/MotorControl.h"
+#include "PIController.h"
 #include "../inc/CLI.h"
 
 uint32_t Duty,Period,Change;
