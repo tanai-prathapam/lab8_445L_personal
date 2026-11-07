@@ -92,7 +92,6 @@ int main(void){ // use main2 to test motors and OLED
   SSD1306_OutString("RSLK 2");
   Bump_Init();
    __enable_irq();
-
   Motor_Init(); // 100Hz
   Duty = 4;
   Period = 10000;

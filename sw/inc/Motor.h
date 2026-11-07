@@ -37,6 +37,7 @@
 #define MOTOR_PERIOD 10000 // 10,000us = 10ms
 #define MOTORMIN 2
 #define MOTORMAX (MOTOR_PERIOD-2)
+
 /**
  * Initialize RSLK motors
  * @param none
