@@ -17,7 +17,7 @@
 #include "PIController.h"
 #include "../inc/CLI.h"
 
-#define DEBUG_MODE 4
+#define DEBUG_MODE 2
 
 uint32_t Duty,Period,Change;
 // Motor
