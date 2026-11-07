@@ -93,9 +93,9 @@ int main(void){ // use main2 to test motors and OLED
   Bump_Init();
    __enable_irq();
   Motor_Init(); // 100Hz
-  Duty = 4;
-  Period = 10000;
-  Change = 500;
+  Duty = 5000;
+  Period = 50000;
+  Change = 5000;
   lasts2 = LaunchPad_InS2();
   SSD1306_SetCursor(0,1);
   SSD1306_OutString("Period= ");

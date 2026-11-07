@@ -26,7 +26,7 @@ void Motor_Init(void){
   Clock_Delay(24); // time to power up
   IOMUX->SECCFG.PINCM[PB1INDEX] = 0x00000084; // TIMA1 output CCP1
   IOMUX->SECCFG.PINCM[PB4INDEX] = 0x00000084; // TIMA1 output CCP0
-  GPIOB->DOE31_0 |= (1<<1) | (1<<4);
+  GPIOB->DOE31_0 |= (1<<0) | (1<<1) | (1<<4) | (1<<16);
   TIMA1->CLKSEL = 8; // 8=BUSCLK, 4= MFCLK, 2= LFCLK clock
   TIMA1->CLKDIV = 0x01; // divide by 1
   TIMA1->COMMONREGS.CPS = 15; // 1/16x prescale
@@ -39,8 +39,8 @@ void Motor_Init(void){
   TIMA1->GEN_EVENT0.IMASK = 0x00; // no interrupts
   TIMA1->COMMONREGS.CCPD = 0x03; // output CCP0, CCP1
   TIMA1->COMMONREGS.CCLKCTL = 1;
-  TIMA1->COUNTERREGS.CC_01[0] = PWM6_PERIOD>>1; //50% nominal duty cycle for testing
-  TIMA1->COUNTERREGS.CC_01[1] = (PWM6_PERIOD * 3)>>2; //25% nominal duty cycle for testing
+  TIMA1->COUNTERREGS.CC_01[0] = PWM6_PERIOD; //initially off
+  TIMA1->COUNTERREGS.CC_01[1] = PWM6_PERIOD; //initially off
   TIMA1->COUNTERREGS.OCTL_01[0] = 0x0000; // connected to PWM
   TIMA1->COUNTERREGS.OCTL_01[1] = 0x0000; // connected to PWM
   TIMA1->COUNTERREGS.CCACT_01[0] = 0x0088;
@@ -53,22 +53,29 @@ void Motor_Init(void){
 }
 
 void Motor_Forward(uint32_t dutyLeft, uint32_t dutyRight){
+  GPIOB->DOUTCLR31_0 = (1<<0) | (1<<16);
+  TIMA1->COUNTERREGS.CC_01[0] = PWM6_PERIOD - dutyLeft;
+  TIMA1->COUNTERREGS.CC_01[1] = PWM6_PERIOD - dutyRight;
   // ****ECE445L write this ****
-
-  
 }
 
 void Motor_Backward(uint32_t dutyLeft, uint32_t dutyRight){
     // ****ECE445L write this ****
-
- 
+  GPIOB->DOUTSET31_0 = (1<<0) | (1<<16);
+  TIMA1->COUNTERREGS.CC_01[0] = PWM6_PERIOD - dutyLeft;
+  TIMA1->COUNTERREGS.CC_01[1] = PWM6_PERIOD - dutyRight;
 }
 void Motor_Right(uint32_t dutyLeft, uint32_t dutyRight){
     // ****ECE445L write this ****
-
+  GPIOB->DOUTSET31_0 = (1<<0);
+  GPIOB->DOUTCLR31_0 = (1<<16);
+  TIMA1->COUNTERREGS.CC_01[0] = PWM6_PERIOD - dutyLeft;
+  TIMA1->COUNTERREGS.CC_01[1] = PWM6_PERIOD - dutyRight;
 }
 void Motor_Left(uint32_t dutyLeft, uint32_t dutyRight){
    // ****ECE445L write this ****
-
-
+  GPIOB->DOUTCLR31_0 = (1<<0);
+  GPIOB->DOUTSET31_0 = (1<<16);
+  TIMA1->COUNTERREGS.CC_01[0] = PWM6_PERIOD - dutyLeft;
+  TIMA1->COUNTERREGS.CC_01[1] = PWM6_PERIOD - dutyRight;
 }
