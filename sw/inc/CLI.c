@@ -61,22 +61,22 @@ static void Snapshot(Status *s) {
     uint32_t saved = __get_PRIMASK();
     __disable_irq();
 
-    s->target = 11; //MC_GetDesiredSpeed();
+    s->target = MC_GetDesiredSpeed();
     // --------- These two currently do not exist in MotorControl.h--------
-    s->left = 9; // MC_GetLeftSpeed();
-    s->right = 10; // MC_GetRightSpeed();
+    s->left = MC_GetLeftSpeed();
+    s->right = MC_GetRightSpeed();
     // --------------------------------------------------------------------
-    s->kp1 = 1; // MC_GetKp1();
-    s->kp2 = 2; // MC_GetKp2();
+    s->kp1 = MC_GetKp1();
+    s->kp2 = MC_GetKp2();
 
-    s->ki1 = 3; // MC_GetKi1(); 
-    s->ki2 = 4; // MC_GetKi2();
+    s->ki1 = MC_GetKi1(); 
+    s->ki2 = MC_GetKi2();
 
-    s->leftE = 5; // MC_GetLeftE(); 
-    s->rightE = 6; // MC_GetRightE();
+    s->leftE = MC_GetLeftE(); 
+    s->rightE = MC_GetRightE();
 
-    s->leftU = 7; // MC_GetLeftU(); 
-    s->rightU = 8; // MC_GetRightU();
+    s->leftU = MC_GetLeftU(); 
+    s->rightU = MC_GetRightU();
 
     __set_PRIMASK(saved);
 }
@@ -126,13 +126,182 @@ void CLI_Init(void) {
     Prompt();
 }
 
+/* Unsigned magnitude arithmetic handles INT32_MIN without signed overflow. */
+static uint8_t Parse(int32_t *result){
+    uint32_t i = 0, magnitude = 0, limit = INT32_MAX;
+    uint8_t negative = (entry[0] == '-');
+    if(tooLong || length == 0) return 0;
+    if(negative){ i = 1; limit = (uint32_t)INT32_MAX + 1; }
+    if(i == length) return 0;
+    for(; i < length; ++i){
+        uint32_t digit;
+        if(entry[i] < '0' || entry[i] > '9') return 0;
+        digit = (uint32_t)(entry[i] - '0');
+        if(magnitude > (limit - digit) / 10) return 0;
+        magnitude = magnitude * 10 + digit;
+    }
+    if(negative){
+        *result = magnitude == (uint32_t)INT32_MAX + 1 ? INT32_MIN : -(int32_t)magnitude;
+    }else{
+        *result = (int32_t)magnitude;
+    }
+    return 1;
+}
+
+static uint8_t Commit(int32_t value){
+    uint32_t saved;
+    if(field == SPEED &&
+       (value < 0 || (uint32_t)value > CLI_MAX_SPEED_RPM)){
+        UART_OutString("Speed must be 0.."); UART_OutUDec(CLI_MAX_SPEED_RPM);
+        UART_OutString(" whole RPM.\r\n");
+        return 0;
+    }
+    if((field == KP2 || field == KI2) && value <= 0){
+        UART_OutString("Divider must be greater than zero.\r\n");
+        return 0;
+    }
+    saved = __get_PRIMASK();
+    __disable_irq();
+    switch(field){
+        case SPEED:
+            if(MC_GetDesiredSpeed() != (uint32_t)value * 10){
+                MC_SetDesiredSpeed((uint32_t)value * 10);
+                captureRequested = 1;
+            }
+            break;
+        case KP1: MC_SetKp1(value); break;
+        case KP2: MC_SetKp2(value); break;
+        case KI1: MC_SetKi1(value); break;
+        case KI2: MC_SetKi2(value); break;
+        default: break;
+    }
+    __set_PRIMASK(saved);
+    return 1;
+}
+
+static void ConfirmField(void){
+    Status s;
+    Snapshot(&s);
+    switch(field){
+        case SPEED: UART_OutString("Speed = "); RPM(s.target); UART_OutString(" RPM"); break;
+        case KP1: UART_OutString("Kp1 = "); UART_OutSDec(s.kp1); break;
+        case KP2: UART_OutString("Kp2 = "); UART_OutSDec(s.kp2); break;
+        case KI1: UART_OutString("Ki1 = "); UART_OutSDec(s.ki1); break;
+        case KI2: UART_OutString("Ki2 = "); UART_OutSDec(s.ki2); break;
+        default: break;
+    }
+    UART_OutString("\r\n");
+}
+
+static void Enter(void){
+    int32_t value;
+    UART_OutString("\r\n");
+    if(tooLong || (length != 0 && !Parse(&value))){
+        UART_OutString("Invalid or overflowing integer; previous value retained.\r\n");
+        ClearEntry(); Prompt(); return;
+    }
+    if(length != 0 && !Commit(value)){
+        ClearEntry(); Prompt(); return;
+    }
+    ConfirmField();
+    ClearEntry();
+    field = (Field)(((uint32_t)field + 1) % FIELD_COUNT);
+    Prompt();
+}
+
+static void Cancel(void){
+    Status s;
+    dumping = 0;
+    ClearEntry(); field = SPEED;
+    UART_OutString("\r\nEntry cancelled. Accepted values retained.\r\n");
+    Snapshot(&s); Settings(&s); Prompt();
+}
+
+static void BeginDump(void){
+    uint32_t i, saved, ticks;
+    uint32_t *left, *right;
+    if(!captureRequested){
+        UART_OutString("\r\nNo capture requested. Change the speed first.\r\n");
+        Prompt(); return;
+    }
+    saved = __get_PRIMASK();
+    __disable_irq();
+    ticks = MC_Time();
+    if(ticks < DUMPSIZE){
+        __set_PRIMASK(saved);
+        UART_OutString("\r\nCapture in progress; try d after two seconds.\r\n");
+        Prompt(); return;
+    }
+    left = MC_DumpLeft(); right = MC_DumpRight();
+    if(left == 0 || right == 0){
+        __set_PRIMASK(saved);
+        UART_OutString("\r\nController log unavailable.\r\n"); Prompt(); return;
+    }
+    dumpTarget = MC_GetDesiredSpeed();
+    // Foreground-only bounded copy, never UART output with IRQs masked
+    // Measure this critical section on target when assessing latency
+    for(i = 0U; i < DUMPSIZE; ++i){
+        leftCopy[i] = left[i]; rightCopy[i] = right[i];
+    }
+    __set_PRIMASK(saved);
+    dumpIndex = 0; dumping = 1;
+    UART_OutString("\r\nXstar="); RPM(dumpTarget); UART_OutString(" RPM\r\n");
+    UART_OutString("time_s,left_rpm,right_rpm\r\n");
+}
+
+static void DumpRow(void){
+    UART_OutUDec(dumpIndex / 100); UART_OutChar('.');
+    UART_OutChar((char)('0' + (dumpIndex % 100) / 10));
+    UART_OutChar((char)('0' + dumpIndex % 10));
+    UART_OutChar(','); RPM(leftCopy[dumpIndex]);
+    UART_OutChar(','); RPM(rightCopy[dumpIndex]); UART_OutString("\r\n");
+    ++dumpIndex;
+    if(dumpIndex == DUMPSIZE){
+        dumping = 0;
+        UART_OutString("End of capture.\r\n"); Prompt();
+    }
+}
+
 // -----------------    CLI_Process   ----------------------------
 // This routine is called periodically. It is a command line interface
 // to enter values to control the Motor 
 // processed one character at a time, does not spin
 void CLI_Process(void){
- 
-    // does not spin
+    char c = UART_InCharNonBlock();
+    if(c == '\0'){
+        if(dumping) DumpRow();
+        return;
+    }
+    if(skipLF){
+        skipLF = 0;
+        if(c == LF) return;
+    }
+    if(c == CR) skipLF = 1;
+    if(c == 'c' || c == 'C' || c == 0x03){ Cancel(); return; }
+    if(dumping){
+        // Only cancellation while streaming, to keep CSV uninterrupted
+        DumpRow(); return;
+    }
+    if(c == 's' || c == 'S' || c == 0x13){
+        CLI_SystemStatus(); Prompt(); return;
+    }
+    if(c == 'd' || c == 'D'){ BeginDump(); return; }
+    if(c == CR || c == LF){ Enter(); return; }
+    if(c == BS || c == DEL){
+        if(length != 0){
+            entry[--length] = '\0'; UART_OutString("\b \b");
+        }
+        return;
+    }
+    if((c >= '0' && c <= '9') || (c == '-' && length == 0)){
+        if(length + 1 < sizeof(entry)){
+            entry[length++] = c; entry[length] = '\0'; UART_OutChar(c);
+        }else{
+            tooLong = 1; UART_OutChar('\a');
+        }
+    }else{
+        UART_OutChar('\a');
+    }
 }  
 
 

@@ -18,7 +18,7 @@
 #include "../inc/CLI.h"
 #include <stdint.h>
 
-#define DEBUG_MODE 2
+#define DEBUG_MODE 4
 
 // Watch these variables in the debugger.
 // Units are 0.1 RPM.
@@ -139,6 +139,15 @@ int main(void){ // use main2 to test motors and OLED
       SSD1306_OutUDec(Duty);
     }
     lasts2 = sw2;
+    uint32_t rightRPM = Tachometer_GetRightrpm();
+    uint32_t leftRPM = Tachometer_GetLeftrpm();
+    SSD1306_SetCursor(0,3);
+    SSD1306_OutString("RightRPM="); 
+    SSD1306_OutUDec(rightRPM/10); SSD1306_OutChar('.'); SSD1306_OutUDec(rightRPM%10);
+
+    SSD1306_SetCursor(0,4);
+    SSD1306_OutString("LeftRPM="); 
+    SSD1306_OutUDec(leftRPM/10); SSD1306_OutChar('.'); SSD1306_OutUDec(leftRPM%10);
   }
 }
 uint32_t Left,Center,Right;

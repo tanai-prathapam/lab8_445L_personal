@@ -215,4 +215,7 @@ int32_t MC_GetRightU(void);
  */
 uint32_t *MC_DumpLeft(void);
 
+uint32_t MC_GetLeftSpeed(void);
+uint32_t MC_GetRightSpeed(void);
+
 #endif
