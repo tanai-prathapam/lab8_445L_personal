@@ -98,6 +98,48 @@ void InputCapture_Init(uint32_t timerClkSrc, uint32_t timerClkPrescale, uint32_t
 void InputCapture_InitDual(uint32_t timerClkSrc, uint32_t timerClkPrescale, uint32_t priority){
  // assumes LaunchPad_Init() has been called
 // ****ECE445L write this ****
+
+  NVIC_DisableIRQ(TIMA0_INT_IRQn);
+
+  // Reset and power TIMA0
+  TIMA0->GPRCM.RSTCTL = 0xB1000003U;
+  TIMA0->GPRCM.PWREN = 0x26000001U;
+  Clock_Delay(24);
+
+  // Digital inputs, external pull-ups, no internal pulls
+  IOMUX->SECCFG.PINCM[24] = 0x00040084U;
+  IOMUX->SECCFG.PINCM[28] = 0x00040085U;
+
+  // Select and divide the timer clock
+  TIMA0->CLKSEL = timerClkSrc;
+  TIMA0->CLKDIV = 0;
+  TIMA0->COMMONREGS.CPS = timerClkPrescale;
+
+  // Continuous 16-bit down counter
+  TIMA0->COMMONREGS.CCPD = 0;
+  TIMA0->COUNTERREGS.CTRCTL = 0x02U;
+  TIMA0->COUNTERREGS.LOAD = 0xFFFFU;
+
+  // Capture rising edges on both channels
+  TIMA0->COUNTERREGS.CCCTL_01[0] = 0x00020001U;
+  TIMA0->COUNTERREGS.CCCTL_01[1] = 0x00020001U;
+
+  // Each channel uses its own CCP input
+  TIMA0->COUNTERREGS.IFCTL_01[0] = 0;
+  TIMA0->COUNTERREGS.IFCTL_01[1] = 0;
+
+  TIMA0->COMMONREGS.CCLKCTL = 1;
+
+  // Clear old events and enable CCD0 and CCD1
+  TIMA0->CPU_INT.ICLR = 0x30U;
+  TIMA0->CPU_INT.IMASK = 0x30U;
+
+  NVIC_ClearPendingIRQ(TIMA0_INT_IRQn);
+  NVIC_SetPriority(TIMA0_INT_IRQn, priority);
+  NVIC_EnableIRQ(TIMA0_INT_IRQn);
+
+  // Start counting
+  TIMA0->COUNTERREGS.CTRCTL |= 1U;
   
   
 }

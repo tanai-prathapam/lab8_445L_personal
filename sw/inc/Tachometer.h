@@ -76,4 +76,14 @@ uint32_t Tachometer_GetRightrpm(void);
  */ 
 uint32_t Tachometer_GetLeftrpm(void);
 
+
+/*
+ * Read both speeds from one publication.
+ * Both pointers must be valid.
+ * Results use 0.1 RPM.
+ */
+void Tachometer_GetSpeeds(uint32_t *left10,
+                         uint32_t *right10);
+
+
 #endif

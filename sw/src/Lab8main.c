@@ -16,10 +16,17 @@
 #include "../inc/Tachometer.h"
 #include "PIController.h"
 #include "../inc/CLI.h"
+#include <stdint.h>
 
 #define DEBUG_MODE 2
 
+// Watch these variables in the debugger.
+// Units are 0.1 RPM.
+volatile uint32_t LeftSpeed;
+volatile uint32_t RightSpeed;
+
 uint32_t Duty,Period,Change;
+uint32_t Left,Center,Right;
 // Motor
 //   PB4  Motor_PWML=PB.4/TIMA1_C0;
 //   PB1  Motor_PWMR=PB.1/TIMA1_C1;
@@ -91,8 +98,15 @@ int main(void){ // use main2 to test motors and OLED
   SSD1306_OutBuffer();
   SSD1306_OutString("RSLK 2");
   Bump_Init();
-   __enable_irq();
+  
   Motor_Init(); // 100Hz
+
+
+  Tachometer_Init();
+
+  // TIMG0: 40 MHz / 40 / 10000 = 100 Hz.
+  TimerG0_IntArm(10000,40,2);
+
   Duty = 5000;
   Period = 50000;
   Change = 5000;
@@ -104,6 +118,9 @@ int main(void){ // use main2 to test motors and OLED
   SSD1306_OutString("Duty= ");
   SSD1306_SetCursor(6,2);
   SSD1306_OutUDec(Duty);
+
+  __enable_irq();
+
   while(1){
     Clock_Delay(100000); // debounce switch
     if(Bump_In()){
@@ -189,6 +206,8 @@ int main(void){ // use main4 to run Lab 8
   SSD1306_ClearBuffer();
   SSD1306_OutBuffer();
  
+  Tachometer_Init();
+  TimerG0_IntArm(10000,40,2);
  
    __enable_irq();
   while(1){
@@ -197,8 +216,10 @@ int main(void){ // use main4 to run Lab 8
 #endif
 // runs in real time at 100 Hz
 void TIMG0_IRQHandler(void){
-  if((TIMG0->CPU_INT.IIDX) == 1){ // this will acknowledge
+  if((TIMG0->CPU_INT.IIDX) == 1){
+    Tachometer_CheckForStopped();
 
-
+    LeftSpeed = Tachometer_GetLeftrpm();
+    RightSpeed = Tachometer_GetRightrpm();
   }
 }
