@@ -60,6 +60,8 @@ void Motor_Init(void){
 }
 
 void Motor_Forward(uint32_t dutyLeft, uint32_t dutyRight){
+  dutyLeft /= 5;
+  dutyRight /= 5;
   GPIOB->DOUTCLR31_0 = (1<<0) | (1<<16);
 
   if(dutyLeft == 0){

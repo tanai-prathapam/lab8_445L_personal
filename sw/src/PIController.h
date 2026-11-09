@@ -38,11 +38,11 @@
 
 // EXPERIMENTAL: Enables feed-forward calculation to improve transient 
 // behavior. MAY BE COMPUTATIONALLY EXPENSIVE AND/OR UNSTABLE.
-#define FF_MODE 0
+#define FF_MODE 1
 
 // "Magic Numbers" cooked up by MATLAB script for use in FF mode. 
-#define L_MOTOR_FFCONFIG 2691, 88436, 2208822077
-#define R_MOTOR_FFCONFIG 2854, 91556, 2418236177
+#define L_MOTOR_FFCONFIG 2691, 88436, 1701590065
+#define R_MOTOR_FFCONFIG 2854, 91556, 1772977673
 
 // Gain for both motors in linear approximation is 18/5. Gain in FF motors is 1.
 
@@ -79,6 +79,7 @@ void PIController_changeparams(PIController *controller, uint32_t kp, uint32_t k
 #if FF_MODE
 // initialization function for FF mode
 void PIController_changeparamsFF(PIController *controller, uint32_t kp, uint32_t ki, uint16_t speed_ref, uint32_t ff_a, uint32_t ff_b, uint32_t ff_c);
+uint32_t PIController_invP(PIController *controller, uint32_t speed_in);
 #endif
 // update function and create output
 uint16_t PIController_update(PIController *controller, uint32_t speed_in);

@@ -30,24 +30,19 @@ void PIController_changeparamsFF(PIController *controller, uint32_t kp, uint32_t
   PIController_changeparams(controller, kp, ki, speed_ref);
 }
 
-#define NUM_NEWTON_ITER 4
+#define NUM_NEWTON_ITER 8
 
-uint32_t int_sqrt(uint32_t radicand){
-  uint32_t a, b; //bounds
-
-  if (radicand < 2) {
-    return radicand;
+uint32_t int_sqrt(uint32_t n) {
+  uint64_t left = 0, right = n, mid;
+  while (left < right-1) {
+      mid = (left>>1) + ((right + 1)>>1);
+      if (mid * mid <= n) {
+          left = mid;
+      } else {
+          right = mid - 1;
+      }
   }
-
-  a = 1255; //initial guess
-
-  // Newton-Raphson approximation
-  for(uint8_t i = 0; i < NUM_NEWTON_ITER; i++){
-    b = radicand / a;
-    a = (a + b)<<1;
-  }
-
-  return a;
+  return left;
 }
 
 // Linearizes the system by (mostly) undoing the nonlinearity of the 
@@ -59,24 +54,22 @@ uint32_t PIController_invP(PIController *controller, uint32_t speed_in){
   // of the corresponding quadratic term to keep it within 32 bits, so we 
   // actually only multiply by 250. There will be a compensating left-shift
   // to fix this.
-  int32_t determinant = controller->ff_c - (250 * controller->ff_a * speed_in);
+  int32_t determinant = controller->ff_c - (2500 * controller->ff_a * speed_in);
   // check for edge cases
   if(determinant < 0){
     // Avoid square root of negative number. Return upper bound.
     return controller->ff_b / controller->ff_a;
   } 
-  if(determinant > (controller->ff_b * controller->ff_b)>>2){
-    // Should never happen if speed_in is non-negative. Return lower bound.
-    return 0;
-  }
   // Finish the computation. The compensating left-shift occurs here.
   int32_t numerator = controller->ff_b - (int_sqrt(determinant)<<1);
+  if( numerator < 0 ) return 0;
   // Multiply to obtain parity in open-loop gain with non-FF mode. 
   // Multiplying by 250 changes from half-percents of duty cycle to unity
   // gain in open loop (feed-forward control), so multiplying by 29/16 sets 
   // DC gain of the plant to 0.0073, which matches the linearly-approximated 
   // open-loop gain.
-  return (29 * numerator / controller->ff_a)>>4;
+  // return (29 * numerator / controller->ff_a)>>4;
+  return (1000 * numerator/ controller->ff_a);
 }
 #endif
 

@@ -229,9 +229,10 @@ void MC_PIControlLoop(PIController *L_PI, PIController *R_PI){
         PIController_changeparams(L_PI, kp, ki, desiredSpeed);
         PIController_changeparams(R_PI, kp, ki, desiredSpeed);
 
-        uint32_t left_control_effort = PIController_update(L_PI, Tachometer_GetLeftrpm());
-        uint32_t right_control_effort = PIController_update(R_PI, Tachometer_GetLeftrpm());
-        Motor_Forward(left_control_effort, right_control_effort);
+        // uint32_t left_control_effort = PIController_update(L_PI, Tachometer_GetLeftrpm());
+        // uint32_t right_control_effort = PIController_update(R_PI, Tachometer_GetLeftrpm());
+        uint32_t ff_control_effort = PIController_invP(L_PI, desiredSpeed/10);
+        Motor_Forward(ff_control_effort, ff_control_effort);
     }
 
     // Record one sample per wheel per tick until both buffers are full.
