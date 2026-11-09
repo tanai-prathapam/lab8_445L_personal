@@ -51,6 +51,7 @@
 #define __MOTORCONTOL_H__
 #include <stdio.h>
 #include <stdint.h>
+#include "PIController.h"
 
 #define MC_OPEN_LOOP_MAX_DUTY 100
 

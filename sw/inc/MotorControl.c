@@ -31,6 +31,7 @@
 #include "../inc/Motor.h"
 #include "../inc/Bump.h" 
 #include <ti/devices/msp/msp.h>
+#include "PIController.h"
 
 // ****ECE445L write this ****
 
@@ -38,10 +39,10 @@
 static volatile uint32_t desiredSpeed = 0;
 static volatile int32_t openLoopDuty = -1; // -1 selects speed control. A value of 0 or higher is fixed duty.
 
-static int32_t kp1 = 0;
-static int32_t kp2 = 1; // Default to 1 to avoid division by zero if applicable
-static int32_t ki1 = 0;
-static int32_t ki2 = 1; // Default to 1 to avoid division by zero if applicable
+static int32_t kp1 = 9863;
+static int32_t kp2 = 72; // Default to 1 to avoid division by zero if applicable
+static int32_t ki1 = 772;
+static int32_t ki2 = 72; // Default to 1 to avoid division by zero if applicable
 
 static volatile int32_t leftError = 0;
 static volatile int32_t rightError = 0;
@@ -222,10 +223,14 @@ void MC_PIControlLoop(PIController *L_PI, PIController *R_PI){
         }
     } else {
         // Student 3: run the closed-loop PI update here.
+        uint32_t kp = (kp1 * 72)/kp2;
+        uint32_t ki = (ki1 * 72)/ki2;
+        
+        PIController_changeparams(L_PI, kp, ki, desiredSpeed);
+        PIController_changeparams(R_PI, kp, ki, desiredSpeed);
+
         uint32_t left_control_effort = PIController_update(L_PI, Tachometer_GetLeftrpm());
         uint32_t right_control_effort = PIController_update(R_PI, Tachometer_GetLeftrpm());
-        PIController_changeparams(L_PI, (kp1 * 72) / kp2, (ki1 * 72) / kp2, desiredSpeed);
-        PIController_changeparams(R_PI, (kp1 * 72) / kp2, (ki1 * 72) / kp2, desiredSpeed);
         Motor_Forward(left_control_effort, right_control_effort);
     }
 

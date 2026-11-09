@@ -165,6 +165,10 @@ static uint8_t Commit(int32_t value){
         UART_OutString(" whole RPM.\r\n");
         return 0;
     }
+    if((field == KP1 || field == KI1) && value < 0){
+        UART_OutString("Gain must be zero or greater.\r\n");
+        return 0;
+    }  
     if((field == KP2 || field == KI2) && value <= 0){
         UART_OutString("Divider must be greater than zero.\r\n");
         return 0;

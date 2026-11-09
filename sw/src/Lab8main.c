@@ -222,12 +222,26 @@ int main(void){ // use main4 to run Lab 8
 
   MC_Init(); // Initializes motors, tachometers, and bumpers
   TimerG0_IntArm(10000,40,2);
-  PIController_changeparams(&L_PI, 9863, 772, 0);
-  PIController_changeparams(&R_PI, 9863, 772, 0);
+  #if FF_MODE
+    PIController_changeparamsFF(&L_PI, 9863, 772, 0, L_MOTOR_FFCONFIG);
+    PIController_changeparamsFF(&R_PI, 9863, 772, 0, R_MOTOR_FFCONFIG);
+  #else
+    PIController_changeparams(&L_PI, 9863, 772, 0);
+    PIController_changeparams(&R_PI, 9863, 772, 0);
+  #endif
   __enable_irq();
   CLI_Init();
   while(1){
     CLI_Process();
+    uint32_t rightRPM = Tachometer_GetRightrpm();
+    uint32_t leftRPM = Tachometer_GetLeftrpm();
+    SSD1306_SetCursor(0,3);
+    SSD1306_OutString("RightRPM="); 
+    SSD1306_OutUDec(rightRPM/10); SSD1306_OutChar('.'); SSD1306_OutUDec(rightRPM%10);
+
+    SSD1306_SetCursor(0,4);
+    SSD1306_OutString("LeftRPM="); 
+    SSD1306_OutUDec(leftRPM/10); SSD1306_OutChar('.'); SSD1306_OutUDec(leftRPM%10);
   }
 }
 #endif

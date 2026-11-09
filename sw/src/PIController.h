@@ -38,7 +38,7 @@
 
 // EXPERIMENTAL: Enables feed-forward calculation to improve transient 
 // behavior. MAY BE COMPUTATIONALLY EXPENSIVE AND/OR UNSTABLE.
-#define FF_MODE 1
+#define FF_MODE 0
 
 // "Magic Numbers" cooked up by MATLAB script for use in FF mode. 
 #define L_MOTOR_FFCONFIG 2691, 88436, 2208822077
