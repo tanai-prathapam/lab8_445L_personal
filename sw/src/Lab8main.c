@@ -19,7 +19,7 @@
 #include "../inc/MotorControl.h"
 #include <stdint.h>
 
-#define DEBUG_MODE 4
+#define DEBUG_MODE 0
 
 // Watch these variables in the debugger.
 // Units are 0.1 RPM.
@@ -217,12 +217,14 @@ int main(void){ // use main4 to run Lab 8
   SSD1306_SetCursor(0,0);
   SSD1306_ClearBuffer();
   SSD1306_OutBuffer();
- 
-  Tachometer_Init();
+
+  MC_Init(); // Initializes motors, tachometers, and bumpers
   TimerG0_IntArm(10000,40,2);
  
-   __enable_irq();
+  __enable_irq();
+  CLI_Init();
   while(1){
+    CLI_Process();
   }
 }
 #endif
@@ -233,7 +235,7 @@ void TIMG0_IRQHandler(void){
 
     LeftSpeed = Tachometer_GetLeftrpm();
     RightSpeed = Tachometer_GetRightrpm();
-    #if DEBUG_MODE == 4
+    #if DEBUG_MODE == 4 || DEBUG_MODE == 0
       MC_PIControlLoop();
     #endif
   }
