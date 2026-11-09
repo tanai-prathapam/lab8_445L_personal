@@ -51,6 +51,9 @@
 #define __MOTORCONTOL_H__
 #include <stdio.h>
 #include <stdint.h>
+
+#define MC_OPEN_LOOP_MAX_DUTY 100
+
 /*****Note to students, feel free to change any or all of this ******/
 /**
  * Initialize RSLK Controller
@@ -217,5 +220,10 @@ uint32_t *MC_DumpLeft(void);
 
 uint32_t MC_GetLeftSpeed(void);
 uint32_t MC_GetRightSpeed(void);
+
+int32_t MC_GetOpenLoopDuty(void);
+
+uint8_t MC_HasCapture(void);
+uint8_t MC_SetOpenLoopDuty(uint32_t dutyPct);
 
 #endif

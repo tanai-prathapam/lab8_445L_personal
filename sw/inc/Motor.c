@@ -18,6 +18,9 @@
 #define DIR_L 1
 #define DIR_R (1<<16)
 #define PWM6_PERIOD 50000
+#define PWM_ACTION     0x0088U     // High at reload, low at compare
+#define PWM_FORCE_LOW  (2U << 28)  // CCACT[29:28] = 10
+#define PWM_FORCE_HIGH (1U << 28)  // CCACT[29:28] = 01
 
 void Motor_Init(void){
   // ****ECE445L write this ****
@@ -26,11 +29,14 @@ void Motor_Init(void){
   Clock_Delay(24); // time to power up
   IOMUX->SECCFG.PINCM[PB1INDEX] = 0x00000084; // TIMA1 output CCP1
   IOMUX->SECCFG.PINCM[PB4INDEX] = 0x00000084; // TIMA1 output CCP0
+  GPIOB->DOUTCLR31_0 = DIR_L | DIR_R;
+  IOMUX->SECCFG.PINCM[PB0INDEX] = 0x81;
+  IOMUX->SECCFG.PINCM[PB16INDEX] = 0x81;
   GPIOB->DOE31_0 |= (1<<0) | (1<<1) | (1<<4) | (1<<16);
   TIMA1->CLKSEL = 8; // 8=BUSCLK, 4= MFCLK, 2= LFCLK clock
-  TIMA1->CLKDIV = 0x01; // divide by 1
+  TIMA1->CLKDIV = 0x0; // divide by 1
   TIMA1->COMMONREGS.CPS = 15; // 1/16x prescale
-  TIMA1->COUNTERREGS.LOAD = PWM6_PERIOD - 1; // 16 * 50 000 / 80 000 000 = 10 ms period
+  TIMA1->COUNTERREGS.LOAD = MOTOR_PERIOD - 1; // 16 * 50 000 / 80 000 000 = 10 ms period
   TIMA1->COUNTERREGS.CTRCTL = 0x02;
   // bits 5-4 CM =0, down
   // bits 3-1 REPEAT =001, continue
@@ -49,33 +55,92 @@ void Motor_Init(void){
 // bits 7-6 CDACT 10 for make low on compare event down
 // bits 4-3 LACT 01 for make high on load event
 // bits 1-0 ZACT 00 for no action on zero event
+  Motor_Forward(0, 0);
   TIMA1->COUNTERREGS.CTRCTL |= 0x01; //enable
 }
 
 void Motor_Forward(uint32_t dutyLeft, uint32_t dutyRight){
   GPIOB->DOUTCLR31_0 = (1<<0) | (1<<16);
-  TIMA1->COUNTERREGS.CC_01[0] = PWM6_PERIOD - dutyLeft;
-  TIMA1->COUNTERREGS.CC_01[1] = PWM6_PERIOD - dutyRight;
-  // ****ECE445L write this ****
+
+  if(dutyLeft == 0){
+    TIMA1->COUNTERREGS.CCACT_01[0] = PWM_FORCE_LOW;
+  }else if(dutyLeft == MOTOR_PERIOD){
+    TIMA1->COUNTERREGS.CCACT_01[0] = PWM_FORCE_HIGH;
+  }else{
+    TIMA1->COUNTERREGS.CC_01[0] = MOTOR_PERIOD - 1 - dutyLeft;
+    TIMA1->COUNTERREGS.CCACT_01[0] = PWM_ACTION;
+  }
+
+  if(dutyRight == 0){
+    TIMA1->COUNTERREGS.CCACT_01[1] = PWM_FORCE_LOW;
+  }else if(dutyRight == MOTOR_PERIOD){
+    TIMA1->COUNTERREGS.CCACT_01[1] = PWM_FORCE_HIGH;
+  }else{
+    TIMA1->COUNTERREGS.CC_01[1] = MOTOR_PERIOD - 1 - dutyRight;
+    TIMA1->COUNTERREGS.CCACT_01[1] = PWM_ACTION;
+  }
 }
 
 void Motor_Backward(uint32_t dutyLeft, uint32_t dutyRight){
-    // ****ECE445L write this ****
   GPIOB->DOUTSET31_0 = (1<<0) | (1<<16);
-  TIMA1->COUNTERREGS.CC_01[0] = PWM6_PERIOD - dutyLeft;
-  TIMA1->COUNTERREGS.CC_01[1] = PWM6_PERIOD - dutyRight;
+  if(dutyLeft == 0){
+    TIMA1->COUNTERREGS.CCACT_01[0] = PWM_FORCE_HIGH;
+  }else if(dutyLeft == MOTOR_PERIOD){
+    TIMA1->COUNTERREGS.CCACT_01[0] = PWM_FORCE_LOW;
+  }else{
+    TIMA1->COUNTERREGS.CC_01[0] = dutyLeft - 1;
+    TIMA1->COUNTERREGS.CCACT_01[0] = PWM_ACTION;
+  }
+
+  if(dutyRight == 0){
+    TIMA1->COUNTERREGS.CCACT_01[1] = PWM_FORCE_HIGH;
+  }else if(dutyRight == MOTOR_PERIOD){
+    TIMA1->COUNTERREGS.CCACT_01[1] = PWM_FORCE_LOW;
+  }else{
+    TIMA1->COUNTERREGS.CC_01[1] = dutyRight - 1;
+    TIMA1->COUNTERREGS.CCACT_01[1] = PWM_ACTION;
+  }
 }
 void Motor_Right(uint32_t dutyLeft, uint32_t dutyRight){
-    // ****ECE445L write this ****
   GPIOB->DOUTSET31_0 = (1<<0);
   GPIOB->DOUTCLR31_0 = (1<<16);
-  TIMA1->COUNTERREGS.CC_01[0] = PWM6_PERIOD - dutyLeft;
-  TIMA1->COUNTERREGS.CC_01[1] = PWM6_PERIOD - dutyRight;
+  
+  if(dutyLeft == 0){
+    TIMA1->COUNTERREGS.CCACT_01[0] = PWM_FORCE_HIGH;
+  }else if(dutyLeft == MOTOR_PERIOD){ // reverse
+    TIMA1->COUNTERREGS.CCACT_01[0] = PWM_FORCE_LOW;
+  }else{
+    TIMA1->COUNTERREGS.CC_01[0] = dutyLeft - 1;
+    TIMA1->COUNTERREGS.CCACT_01[0] = PWM_ACTION;
+  }
+
+  if(dutyRight == 0){
+    TIMA1->COUNTERREGS.CCACT_01[1] = PWM_FORCE_LOW;
+  }else if(dutyRight == MOTOR_PERIOD){ // forward
+    TIMA1->COUNTERREGS.CCACT_01[1] = PWM_FORCE_HIGH;
+  }else{
+    TIMA1->COUNTERREGS.CC_01[1] = MOTOR_PERIOD - 1 - dutyRight;
+    TIMA1->COUNTERREGS.CCACT_01[1] = PWM_ACTION;
+  }
 }
 void Motor_Left(uint32_t dutyLeft, uint32_t dutyRight){
-   // ****ECE445L write this ****
   GPIOB->DOUTCLR31_0 = (1<<0);
   GPIOB->DOUTSET31_0 = (1<<16);
-  TIMA1->COUNTERREGS.CC_01[0] = PWM6_PERIOD - dutyLeft;
-  TIMA1->COUNTERREGS.CC_01[1] = PWM6_PERIOD - dutyRight;
+  if(dutyLeft == 0){
+    TIMA1->COUNTERREGS.CCACT_01[0] = PWM_FORCE_LOW;
+  }else if(dutyLeft == MOTOR_PERIOD){// forward
+    TIMA1->COUNTERREGS.CCACT_01[0] = PWM_FORCE_HIGH;
+  }else{
+    TIMA1->COUNTERREGS.CC_01[0] = MOTOR_PERIOD - 1 - dutyLeft;
+    TIMA1->COUNTERREGS.CCACT_01[0] = PWM_ACTION;
+  }
+
+  if(dutyRight == 0){
+    TIMA1->COUNTERREGS.CCACT_01[1] = PWM_FORCE_HIGH;
+  }else if(dutyRight == MOTOR_PERIOD){// reverse
+    TIMA1->COUNTERREGS.CCACT_01[1] = PWM_FORCE_LOW;
+  }else{
+    TIMA1->COUNTERREGS.CC_01[1] = dutyRight - 1;
+    TIMA1->COUNTERREGS.CCACT_01[1] = PWM_ACTION; 
+  }
 }

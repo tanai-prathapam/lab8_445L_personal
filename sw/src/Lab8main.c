@@ -16,6 +16,7 @@
 #include "../inc/Tachometer.h"
 #include "PIController.h"
 #include "../inc/CLI.h"
+#include "../inc/MotorControl.h"
 #include <stdint.h>
 
 #define DEBUG_MODE 4
@@ -197,7 +198,9 @@ int main(void){ // use main5 to test CLI interface
   __disable_irq();
   LaunchPad_Init();
   Clock_Init_HFXT_40_80MHz(0);  // 0.005% accurate running off external crystal oscillator
- 
+  MC_Init();
+  TimerG0_IntArm(10000,40,2); // 40 Mhz / 40 / 10000 = 100Hz
+
    __enable_irq();
    CLI_Init();
   while(1){
@@ -230,5 +233,8 @@ void TIMG0_IRQHandler(void){
 
     LeftSpeed = Tachometer_GetLeftrpm();
     RightSpeed = Tachometer_GetRightrpm();
+    #if DEBUG_MODE == 4
+      MC_PIControlLoop();
+    #endif
   }
 }

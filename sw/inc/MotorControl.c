@@ -28,23 +28,28 @@
 
 #include "../inc/MotorControl.h"
 #include "../inc/Tachometer.h"
+#include "../inc/Motor.h"
+#include "../inc/Bump.h" 
 #include <ti/devices/msp/msp.h>
 
 // ****ECE445L write this ****
 
 // Backing static state variables
-static uint32_t desiredSpeed = 0;
+static volatile uint32_t desiredSpeed = 0;
+static volatile int32_t openLoopDuty = -1; // -1 selects speed control. A value of 0 or higher is fixed duty.
+
 static int32_t kp1 = 0;
 static int32_t kp2 = 1; // Default to 1 to avoid division by zero if applicable
 static int32_t ki1 = 0;
 static int32_t ki2 = 1; // Default to 1 to avoid division by zero if applicable
 
-static int32_t leftError = 0;
-static int32_t rightError = 0;
-static int32_t leftActuator = 0;
-static int32_t rightActuator = 0;
+static volatile int32_t leftError = 0;
+static volatile int32_t rightError = 0;
+static volatile int32_t leftActuator = 0;
+static volatile int32_t rightActuator = 0;
 
-static uint32_t controlTime = 0;
+static volatile uint32_t controlTime = 0;
+static volatile uint8_t captureRequested;
 
 // Dump buffers (200 speed samples each)
 static uint32_t leftSpeedDump[DUMPSIZE];
@@ -57,9 +62,44 @@ static uint32_t rightSpeedDump[DUMPSIZE];
 void MC_SetDesiredSpeed(uint32_t newSpeed) {
     uint32_t saved = __get_PRIMASK();
     __disable_irq();
-    desiredSpeed = newSpeed;
-    controlTime = 0; // Reset time tracker on speed change
+    if(openLoopDuty >= 0 || desiredSpeed != newSpeed){
+        if(openLoopDuty >= 0){
+            Motor_Forward(0, 0);
+            leftActuator = rightActuator = 0;
+        }
+        openLoopDuty = -1;
+        desiredSpeed = newSpeed;
+        controlTime = 0;
+        captureRequested = 1;
+    }
     __set_PRIMASK(saved);
+}
+
+uint8_t MC_SetOpenLoopDuty(uint32_t dutyPct) {
+    uint32_t saved;
+    if(dutyPct > MC_OPEN_LOOP_MAX_DUTY) return 0;
+
+    saved = __get_PRIMASK();
+    __disable_irq();
+    if(dutyPct != 0 && Bump_In()){
+        __set_PRIMASK(saved);
+        return 0;
+    }
+    openLoopDuty = (int32_t)dutyPct;
+    desiredSpeed = 0;
+    leftError = rightError = 0;
+    controlTime = 0;
+    captureRequested = 1;
+    __set_PRIMASK(saved);
+    return 1;
+}
+
+int32_t MC_GetOpenLoopDuty(void) {
+    return openLoopDuty;
+}
+
+uint8_t MC_HasCapture(void) {
+    return captureRequested;
 }
 
 uint32_t MC_GetDesiredSpeed(void) {
@@ -161,14 +201,43 @@ uint32_t *MC_DumpRight(void) {
 // flag indicates if the motor is running. If not, the rev/sec variable is cleared. 
 //
 void MC_PIControlLoop(void){
-  
+    // A bumper press stops the motors and invalidates the capture.
+    if(Bump_In()){
+        Motor_Forward(0, 0);
+        desiredSpeed = 0;
+        openLoopDuty = -1;
+        leftActuator = rightActuator = 0;
+        leftError = rightError = 0;
+        captureRequested = 0;
+        controlTime = 0;
+        return;
+    }
+
+    // Apply the fixed PWM once, on the first tick of the capture.
+    if(openLoopDuty >= 0){
+        if(controlTime == 0){
+            uint32_t dutyCounts = MOTOR_PERIOD * (uint32_t)openLoopDuty / 100U;
+            Motor_Forward(dutyCounts, dutyCounts);
+            leftActuator = rightActuator = (int32_t)dutyCounts;
+        }
+    } else {
+        // Student 3: run the closed-loop PI update here.
+    }
+
+    // Record one sample per wheel per tick until both buffers are full.
+    if(captureRequested && controlTime < DUMPSIZE){
+        uint32_t sample = controlTime;
+        leftSpeedDump[sample] = MC_GetLeftSpeed();
+        rightSpeedDump[sample] = MC_GetRightSpeed();
+        controlTime = sample + 1;
+    }
 }
 
 // --------------------- Initialize Motor Control -------------------
 //
 void MC_Init(void) {
-
-  
-  
+    Motor_Init();
+    Tachometer_Init();
+    Bump_Init();
 }
 

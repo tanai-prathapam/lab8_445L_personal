@@ -24,7 +24,7 @@
 #define DUMPSIZE 200 // 200 speed samples per motor. At 100 Hz, that is approx 2 seconds of data
 
 // Input capture setup without externing
-typedef enum { SPEED, KP1, KP2, KI1, KI2, FIELD_COUNT } Field;
+typedef enum { SPEED, KP1, KP2, KI1, KI2, DUTY } Field;
 
 /*
 * All in 0.1 RPM
@@ -34,14 +34,15 @@ typedef enum { SPEED, KP1, KP2, KI1, KI2, FIELD_COUNT } Field;
 */
 typedef struct {
     uint32_t target, left, right;
-    int32_t kp1, kp2, ki1, ki2, leftE, rightE, leftU, rightU;
+    int32_t dutyPct, kp1, kp2, ki1, ki2, leftE, rightE, leftU, rightU;
 } Status;
 
 static Field field;
 static char entry[12]; // sign + 10 decimal digits + terminator
 static uint32_t length;
-static uint8_t tooLong, skipLF, captureRequested, dumping;
+static uint8_t tooLong, skipLF, dumping;
 static uint32_t dumpIndex, dumpTarget;
+static int32_t dumpDutyPct;
 // Save a consistent copy of the motor data so it stays unchanged while the CLI displays it
 static uint32_t leftCopy[DUMPSIZE], rightCopy[DUMPSIZE];
 
@@ -62,10 +63,9 @@ static void Snapshot(Status *s) {
     __disable_irq();
 
     s->target = MC_GetDesiredSpeed();
-    // --------- These two currently do not exist in MotorControl.h--------
+    s->dutyPct = MC_GetOpenLoopDuty();
     s->left = MC_GetLeftSpeed();
     s->right = MC_GetRightSpeed();
-    // --------------------------------------------------------------------
     s->kp1 = MC_GetKp1();
     s->kp2 = MC_GetKp2();
 
@@ -95,6 +95,13 @@ void CLI_SystemStatus(void) {
     Snapshot(&s);
     UART_OutString("\r\nStatus:\r\n");
     Settings(&s);
+
+    if(s.dutyPct >= 0){
+        UART_OutString("Open-loop PWM = ");
+        UART_OutUDec((uint32_t)s.dutyPct);
+        UART_OutString("% for both motors\r\n");
+    }
+
     UART_OutString("Left: RPM="); RPM(s.left);
     UART_OutString(" E(raw)="); UART_OutSDec(s.leftE);
     UART_OutString(" U(raw)="); UART_OutSDec(s.leftU); UART_OutString("\r\n");
@@ -104,9 +111,10 @@ void CLI_SystemStatus(void) {
 }
 
 static void Prompt(void) {
-    static const char *const names[FIELD_COUNT] = {
-        "speed (whole RPM)", "Kp1", "Kp2 (>0)", "Ki1", "Ki2 (>0)"
+    static const char *const names[6] = {
+        "speed (whole RPM)", "Kp1", "Kp2 (>0)", "Ki1", "Ki2 (>0)", "open-loop duty (whole %%)"
     };
+    if(field == 0) UART_OutChar('\n');
     UART_OutString("Enter new "); UART_OutString(names[field]); UART_OutString(": "); UART_OutString(entry);
 }
 
@@ -117,11 +125,12 @@ static void Prompt(void) {
 void CLI_Init(void) {
     UART_Init();
     field = SPEED;
-    skipLF = captureRequested = dumping = 0;
+    skipLF = dumping = 0;
     ClearEntry();
-    UART_OutString("\r\nLab 8 CLI\r\n");
+    UART_OutString("\r\n\nLab 8 CLI\r\n");
     UART_OutString("Enter keeps an empty field; BS/DEL edits.\r\n");
     UART_OutString("c/Ctrl-C cancels; s/Ctrl-S shows status; d dumps.\r\n");
+    UART_OutString("o sets fixed PWM for both motors; o then 0 stops.\r\n");
     CLI_SystemStatus();
     Prompt();
 }
@@ -160,15 +169,22 @@ static uint8_t Commit(int32_t value){
         UART_OutString("Divider must be greater than zero.\r\n");
         return 0;
     }
+    if(field == DUTY){
+        if(value < 0 || (uint32_t)value > MC_OPEN_LOOP_MAX_DUTY){
+            UART_OutString("Duty must be 0.."); UART_OutUDec(MC_OPEN_LOOP_MAX_DUTY);
+            UART_OutString(" whole percent.\r\n");
+            return 0;
+        }
+        if(!MC_SetOpenLoopDuty((uint32_t)value)){
+            UART_OutString("Bumper pressed; duty command ignored.\r\n");
+            return 0;
+        }
+        return 1;
+    }
     saved = __get_PRIMASK();
     __disable_irq();
     switch(field){
-        case SPEED:
-            if(MC_GetDesiredSpeed() != (uint32_t)value * 10){
-                MC_SetDesiredSpeed((uint32_t)value * 10);
-                captureRequested = 1;
-            }
-            break;
+        case SPEED: MC_SetDesiredSpeed((uint32_t)value * 10); break;
         case KP1: MC_SetKp1(value); break;
         case KP2: MC_SetKp2(value); break;
         case KI1: MC_SetKi1(value); break;
@@ -203,9 +219,20 @@ static void Enter(void){
     if(length != 0 && !Commit(value)){
         ClearEntry(); Prompt(); return;
     }
-    ConfirmField();
+
+    if(field == DUTY){
+        if(length != 0){
+            UART_OutString("Open-loop duty = ");
+            UART_OutUDec((uint32_t)value);
+            UART_OutString("%%. Wait two seconds, then press d.\r\n");
+        }
+        field = SPEED;
+    }else{
+        ConfirmField();
+        field = field == KI2 ? SPEED : (Field)(field + 1);
+    }
+
     ClearEntry();
-    field = (Field)(((uint32_t)field + 1) % FIELD_COUNT);
     Prompt();
 }
 
@@ -220,10 +247,7 @@ static void Cancel(void){
 static void BeginDump(void){
     uint32_t i, saved, ticks;
     uint32_t *left, *right;
-    if(!captureRequested){
-        UART_OutString("\r\nNo capture requested. Change the speed first.\r\n");
-        Prompt(); return;
-    }
+    
     saved = __get_PRIMASK();
     __disable_irq();
     ticks = MC_Time();
@@ -238,6 +262,7 @@ static void BeginDump(void){
         UART_OutString("\r\nController log unavailable.\r\n"); Prompt(); return;
     }
     dumpTarget = MC_GetDesiredSpeed();
+    dumpDutyPct = MC_GetOpenLoopDuty();
     // Foreground-only bounded copy, never UART output with IRQs masked
     // Measure this critical section on target when assessing latency
     for(i = 0U; i < DUMPSIZE; ++i){
@@ -245,14 +270,24 @@ static void BeginDump(void){
     }
     __set_PRIMASK(saved);
     dumpIndex = 0; dumping = 1;
-    UART_OutString("\r\nXstar="); RPM(dumpTarget); UART_OutString(" RPM\r\n");
-    UART_OutString("time_s,left_rpm,right_rpm\r\n");
+
+    if(dumpDutyPct >= 0){
+        UART_OutString("\r\ntime_s,duty_pct,left_rpm,right_rpm\r\n");
+    }else{
+        UART_OutString("\r\nXstar="); RPM(dumpTarget); UART_OutString(" RPM\r\n");
+        UART_OutString("time_s,left_rpm,right_rpm\r\n");
+    }
 }
 
 static void DumpRow(void){
     UART_OutUDec(dumpIndex / 100); UART_OutChar('.');
     UART_OutChar((char)('0' + (dumpIndex % 100) / 10));
     UART_OutChar((char)('0' + dumpIndex % 10));
+
+    if(dumpDutyPct >= 0){
+        UART_OutChar(','); UART_OutUDec((uint32_t)dumpDutyPct);
+    }
+
     UART_OutChar(','); RPM(leftCopy[dumpIndex]);
     UART_OutChar(','); RPM(rightCopy[dumpIndex]); UART_OutString("\r\n");
     ++dumpIndex;
@@ -283,12 +318,18 @@ void CLI_Process(void){
         DumpRow(); return;
     }
     if(c == 's' || c == 'S' || c == 0x13){
+        UART_OutChar('\n');
         CLI_SystemStatus(); Prompt(); return;
     }
     if(c == 'd' || c == 'D'){ BeginDump(); return; }
+    if(c == 'o' || c == 'O'){
+        ClearEntry(); field = DUTY;
+        UART_OutString("\r\n"); Prompt(); return;
+    }
     if(c == CR || c == LF){ Enter(); return; }
     if(c == BS || c == DEL){
         if(length != 0){
+            UART_OutChar('\n');
             entry[--length] = '\0'; UART_OutString("\b \b");
         }
         return;
