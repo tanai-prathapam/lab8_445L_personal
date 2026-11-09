@@ -1,9 +1,10 @@
+%% FF Control
 duty = 0.5 * [0 5 10 15 20 30 40 50 60 75]; % duty cycle (%)
 speed_left = [0 0 35.7 83.3 125.0 176.6 204.6 228.3 242.3 254.8]; % RPM
 speed_right = [0 0 25.1 78.1 121.9 171.4 210.9 221.6 241.5 246.5]; % RPM
 figure;
 plot(duty, speed_left);
-xlabel("Duty Cycle (%)");
+xlabel("Duty Cycle (2%)");
 ylabel("Speed (RPM)");
 hold on;
 plot(duty, speed_right);
@@ -27,5 +28,79 @@ fprintf("Right motor specs: A=%.0f, B=%.0f, C=%.0f\n\n", right_A, right_B, right
 
 left_linear = polyfit(duty(2:end), speed_left(2:end), 1);
 right_linear = polyfit(duty(2:end), speed_right(2:end), 1);
-fprintf("Left motor linear gain: %.0f\n", left_linear(1));
-fprintf("Right motor linear gain: %.0f\n", right_linear(1));
+fprintf("Left motor linear gain: %.6f\n", left_linear(1));
+fprintf("Right motor linear gain: %.6f\n", right_linear(1));
+%% Transient Response Calculation - Data Collection
+opts = delimitedTextImportOptions("NumVariables", 4);
+
+% Specify range and delimiter
+opts.DataLines = [1, Inf];
+opts.Delimiter = ",";
+
+% Specify column names and types
+opts.VariableNames = ["Time", "PWM", "L_RPM", "R_RPM"];
+opts.VariableTypes = ["double", "double", "double", "double"];
+
+% Specify file level properties
+opts.ExtraColumnsRule = "ignore";
+opts.EmptyLineRule = "read";
+
+% Import the data
+x25to50 = readtable("25to50.csv", opts);
+x25to75 = readtable("25to75.csv", opts);
+clear opts
+
+%% Time Constant - 25% to 50%
+% We can see from plotting that the system reaches steady-state in
+% approximately 0.36 seconds. If we divide this by 4.6, we get a time
+% constant of 0.0783 seconds. 
+figure;
+plot(x25to50.Time, x25to50.L_RPM);
+hold on;
+plot(x25to50.Time, x25to50.R_RPM);
+tau_l_motor = 0.36/4.6;
+tau_r_motor = 0.36/4.6;
+legend("Left Motor", "Right Motor");
+xlabel("Time (seconds)");
+ylabel("Speed (RPM)");
+title("25% to 50% Duty Cycle");
+figure;
+plot(x25to75.Time, x25to75.L_RPM);
+hold on;
+plot(x25to75.Time, x25to75.R_RPM);
+legend("Left Motor", "Right Motor");
+title("25% to 75% Duty Cycle");
+xlabel("Time (seconds)");
+ylabel("Speed (RPM)");
+%% Time constant - FF
+syms x y
+eqn = left_coeffs(1) * x^2 + left_coeffs(2) * x + left_coeffs(3) == y;
+disp(simplify(solve(eqn, x)))
+invP = @(speed) 32.8650 - (8*sqrt(2)*sqrt(7.3438 - speed .* 0.029));
+figure;
+plot(x25to50.Time, invP(x25to50.L_RPM) - 12.7839);
+hold on;
+plot(x25to75.Time, invP(x25to75.L_RPM) - 12.7839);
+xlabel("Time (seconds)");
+ylabel("Linearized Speed (RPM)");
+title("Left Motor Step Response with FF-Linearized System");
+legend("25% to 50%", "25% to 75%");
+figure;
+plot(x25to50.Time, invP(x25to50.R_RPM) - 12.7839);
+hold on;
+plot(x25to75.Time, invP(x25to75.R_RPM) - 12.7839);
+xlabel("Time (seconds)");
+ylabel("Linearized Speed (RPM)");
+title("Right Motor Step Response with FF-Linearized System");
+legend("25% to 50%", "25% to 75%");
+%%
+% We can see from plotting that the system reaches steady-state in
+% approximately 0.36 seconds. If we divide this by 4.6, we get a time
+% constant of 0.0783 seconds. 
+tau_l_motor = 0.36/4.6; % no change
+tau_r_motor = 0.36/4.6; % no change
+T_sample = 0.1; % seconds
+A_0 = 0.0073; % approximate open-loop gain of motor, G(0Hz)
+kp = 10 * T_sample / A_0;
+ki = tau_l_motor * kp;
+fprintf("kp=%f, ki=%f\n", kp, ki);

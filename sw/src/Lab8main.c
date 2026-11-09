@@ -28,6 +28,8 @@ volatile uint32_t RightSpeed;
 
 uint32_t Duty,Period,Change;
 uint32_t Left,Center,Right;
+
+PIController L_PI, R_PI;
 // Motor
 //   PB4  Motor_PWML=PB.4/TIMA1_C0;
 //   PB1  Motor_PWMR=PB.1/TIMA1_C1;
@@ -220,7 +222,8 @@ int main(void){ // use main4 to run Lab 8
 
   MC_Init(); // Initializes motors, tachometers, and bumpers
   TimerG0_IntArm(10000,40,2);
- 
+  PIController_changeparams(&L_PI, 9863, 772, 0);
+  PIController_changeparams(&R_PI, 9863, 772, 0);
   __enable_irq();
   CLI_Init();
   while(1){
@@ -236,7 +239,7 @@ void TIMG0_IRQHandler(void){
     LeftSpeed = Tachometer_GetLeftrpm();
     RightSpeed = Tachometer_GetRightrpm();
     #if DEBUG_MODE == 4 || DEBUG_MODE == 0
-      MC_PIControlLoop();
+      MC_PIControlLoop(&L_PI, &R_PI);
     #endif
   }
 }

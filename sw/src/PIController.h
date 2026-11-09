@@ -26,9 +26,15 @@
 #define T_S 0x1A
 #define T_S_SHIFT 8
 
+// Defines the unit scale of the RPM measurement. Nominally 10, as 
+// measurements are taken in units of 0.1RPM.
+#define RPM_SCALE 10
+
 // The floating-point exponent for kp and ki (let's hope that it's the 
 // same for all 4 parameters across 2 motors).
-#define K_SHIFT 0
+#define K_SHIFT 3
+// The floating-point denominator for kp and ki.
+#define K_DENOM 9
 
 // EXPERIMENTAL: Enables feed-forward calculation to improve transient 
 // behavior. MAY BE COMPUTATIONALLY EXPENSIVE AND/OR UNSTABLE.

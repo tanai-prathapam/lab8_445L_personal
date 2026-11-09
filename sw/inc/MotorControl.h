@@ -70,7 +70,7 @@ void MC_Init(void);
  * @brief  PI controller
  * @note should run at 100Hz
  */
-void MC_PIControlLoop(void);
+void MC_PIControlLoop(PIController *L_PI, PIController *R_PI);
 
 /**
  * Set desired speed in 0.1 rpm.

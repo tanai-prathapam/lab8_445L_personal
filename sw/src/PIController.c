@@ -11,7 +11,7 @@
 #include <ti/devices/msp/msp.h>
 #include "PIController.h"
 
-void PIController_changeparams(PIController *controller, uint32_t kp, uint32_t ki, uint32_t speed_ref){
+void PIController_changeparams(PIController *controller, uint32_t kp, uint32_t ki, uint16_t speed_ref){
   // kp + (Ts/2) * ki; stored separate from division for numerical stability
   controller->kpi_plus = ((T_S * ki)<<(T_S_SHIFT + 1)) + kp;
   // -kp + (Ts/2) * ki; stored separate from division for numerical stability
@@ -23,11 +23,11 @@ void PIController_changeparams(PIController *controller, uint32_t kp, uint32_t k
 #if FF_MODE
 
 // To use this function, use the macros L_MOTOR_FFCONFIG and R_MOTOR_FFCONFIG in place of the last 3 parameters. 
-void PIController_changeparamsFF(PIController *controller, uint32_t kp, uint32_t ki, uint32_t speed_ref, uint32_t ff_a, uint32_t ff_b, uint32_t ff_c){
+void PIController_changeparamsFF(PIController *controller, uint32_t kp, uint32_t ki, uint16_t speed_ref, uint32_t ff_a, uint32_t ff_b, uint32_t ff_c){
   controller->ff_a = ff_a;
   controller->ff_b = ff_b;
   controller->ff_c = ff_c;
-  PIController_init(controller, kp, ki, speed_ref);
+  PIController_changeparams(controller, kp, ki, speed_ref);
 }
 
 #define NUM_NEWTON_ITER 4
@@ -43,7 +43,7 @@ uint32_t int_sqrt(uint32_t radicand){
 
   // Newton-Raphson approximation
   for(uint8_t i = 0; i < NUM_NEWTON_ITER; i++){
-    b = val / a;
+    b = radicand / a;
     a = (a + b)<<1;
   }
 
@@ -71,19 +71,19 @@ uint32_t PIController_invP(PIController *controller, uint32_t speed_in){
   }
   // Finish the computation. The compensating left-shift occurs here.
   int32_t numerator = controller->ff_b - (int_sqrt(determinant)<<1);
-  // Multiply by 910 to obtain parity in open-loop gain with non-FF mode. 
+  // Multiply to obtain parity in open-loop gain with non-FF mode. 
   // Multiplying by 250 changes from half-percents of duty cycle to unity
-  // gain in open loop (feed-forward control), so multiplying by 910 sets 
-  // open-loop gain to 3.64, which matches the linearly-approximated 
+  // gain in open loop (feed-forward control), so multiplying by 29/16 sets 
+  // DC gain of the plant to 0.0073, which matches the linearly-approximated 
   // open-loop gain.
-  return 910 * numerator / controller->ff_a;
+  return (29 * numerator / controller->ff_a)>>4;
 }
 #endif
 
 uint16_t PIController_update(PIController *controller, uint32_t speed_in){
   // Update step via bilinear transformation
-  controller->prev_out += (controller->kpi_plus * (speed_ref - speed_in) + controller->kpi_minus * controller->prev_error)>>K_SHIFT;
-  controller->prev_error = speed_ref - speed_in;
+  controller->prev_out += ((controller->kpi_plus * (controller->speed_ref - speed_in) / RPM_SCALE + controller->kpi_minus * controller->prev_error) / K_DENOM)>>K_SHIFT;
+  controller->prev_error = controller->speed_ref - speed_in;
   #if FF_MODE
   // The PI controller does not directly control duty cycle, it controls a 
   // feed-forward approximation of speed that should vary linearly with 

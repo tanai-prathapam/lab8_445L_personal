@@ -112,7 +112,7 @@ void CLI_SystemStatus(void) {
 
 static void Prompt(void) {
     static const char *const names[6] = {
-        "speed (whole RPM)", "Kp1", "Kp2 (>0)", "Ki1", "Ki2 (>0)", "open-loop duty (whole %%)"
+        "speed (whole RPM)", "Kp1", "Kp2 (>0)", "Ki1", "Ki2 (>0)", "open-loop duty (whole %)"
     };
     if(field == 0) UART_OutChar('\n');
     UART_OutString("Enter new "); UART_OutString(names[field]); UART_OutString(": "); UART_OutString(entry);
@@ -224,7 +224,7 @@ static void Enter(void){
         if(length != 0){
             UART_OutString("Open-loop duty = ");
             UART_OutUDec((uint32_t)value);
-            UART_OutString("%%. Wait two seconds, then press d.\r\n");
+            UART_OutString("%. Wait two seconds, then press d.\r\n");
         }
         field = SPEED;
     }else{

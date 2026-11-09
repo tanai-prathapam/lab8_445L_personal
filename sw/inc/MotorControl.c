@@ -200,7 +200,7 @@ uint32_t *MC_DumpRight(void) {
 // This routine is the main PI control loop. It is run every 10ms. The Count10ms 
 // flag indicates if the motor is running. If not, the rev/sec variable is cleared. 
 //
-void MC_PIControlLoop(void){
+void MC_PIControlLoop(PIController *L_PI, PIController *R_PI){
     // A bumper press stops the motors and invalidates the capture.
     if(Bump_In()){
         Motor_Forward(0, 0);
@@ -222,6 +222,11 @@ void MC_PIControlLoop(void){
         }
     } else {
         // Student 3: run the closed-loop PI update here.
+        uint32_t left_control_effort = PIController_update(L_PI, Tachometer_GetLeftrpm());
+        uint32_t right_control_effort = PIController_update(R_PI, Tachometer_GetLeftrpm());
+        PIController_changeparams(L_PI, (kp1 * 72) / kp2, (ki1 * 72) / kp2, desiredSpeed);
+        PIController_changeparams(R_PI, (kp1 * 72) / kp2, (ki1 * 72) / kp2, desiredSpeed);
+        Motor_Forward(left_control_effort, right_control_effort);
     }
 
     // Record one sample per wheel per tick until both buffers are full.
