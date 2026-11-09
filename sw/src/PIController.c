@@ -13,9 +13,9 @@
 
 void PIController_changeparams(PIController *controller, uint32_t kp, uint32_t ki, uint16_t speed_ref){
   // kp + (Ts/2) * ki; stored separate from division for numerical stability
-  controller->kpi_plus = ((T_S * ki)<<(T_S_SHIFT + 1)) + kp;
+  controller->kpi_plus = ki + (T_S * 2 * kp);
   // -kp + (Ts/2) * ki; stored separate from division for numerical stability
-  controller->kpi_minus = ((T_S * ki)<<(T_S_SHIFT + 1)) - kp;
+  controller->kpi_minus = ki - (T_S * 2 * kp);
   // everything else
   controller->speed_ref = speed_ref;
 }
@@ -75,7 +75,7 @@ uint32_t PIController_invP(PIController *controller, uint32_t speed_in){
 
 uint16_t PIController_update(PIController *controller, uint32_t speed_in){
   // Update step via bilinear transformation
-  controller->prev_out += ((controller->kpi_plus * (controller->speed_ref - speed_in) / RPM_SCALE + controller->kpi_minus * controller->prev_error) / K_DENOM)>>K_SHIFT;
+  controller->prev_out += (((controller->kpi_plus * (controller->speed_ref - speed_in) / RPM_SCALE + controller->kpi_minus * controller->prev_error) / K_DENOM)>>(K_SHIFT+1)) / T_S;
   controller->prev_error = controller->speed_ref - speed_in;
   #if FF_MODE
   // The PI controller does not directly control duty cycle, it controls a 

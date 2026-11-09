@@ -23,8 +23,7 @@
 // Convert the time step (in seconds) to floating point binary, then 
 // store the significand (including the leading 1!) in T_S and the 
 // exponent in T_S_SHIFT.  
-#define T_S 0x1A
-#define T_S_SHIFT 8
+#define T_S 100
 
 // Defines the unit scale of the RPM measurement. Nominally 10, as 
 // measurements are taken in units of 0.1RPM.
