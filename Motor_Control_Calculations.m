@@ -19,7 +19,7 @@ left_coeffs_calc = left_coeffs * 10000;
 right_coeffs_calc = right_coeffs * 10000;
 left_A = -1 * left_coeffs_calc(1);
 left_B = 0.5 * left_coeffs_calc(2);
-left_C = (left_B^2 + left_coeffs_calc(1) * left_coeffs_calc(3))/4;
+left_C = (left_B^2 - left_coeffs_calc(1) * left_coeffs_calc(3))/4;
 fprintf("Left motor specs: A=%.0f, B=%.0f, C=%.0f\n", left_A, left_B, left_C);
 right_A = -1 * right_coeffs_calc(1);
 right_B = 0.5 * right_coeffs_calc(2);
@@ -104,3 +104,6 @@ A_0 = 0.0073; % approximate open-loop gain of motor, G(0Hz)
 kp = 10 * T_sample / A_0;
 ki = tau_l_motor * kp;
 fprintf("kp=%f, ki=%f\n", kp, ki);
+
+invP2 = @(speed) invP(speed/10)*1000;
+
