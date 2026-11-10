@@ -31,9 +31,9 @@
 
 // The floating-point exponent for kp and ki (let's hope that it's the 
 // same for all 4 parameters across 2 motors).
-#define K_SHIFT 3
+#define K_SHIFT 1
 // The floating-point denominator for kp and ki.
-#define K_DENOM 9
+#define K_DENOM 25
 
 // EXPERIMENTAL: Enables feed-forward calculation to improve transient 
 // behavior. MAY BE COMPUTATIONALLY EXPENSIVE AND/OR UNSTABLE.

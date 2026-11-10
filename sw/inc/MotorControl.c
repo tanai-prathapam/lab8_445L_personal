@@ -39,9 +39,9 @@
 static volatile uint32_t desiredSpeed = 0;
 static volatile int32_t openLoopDuty = -1; // -1 selects speed control. A value of 0 or higher is fixed duty.
 
-static int32_t kp1 = 9863;
+static int32_t kp1 = 5;
 static int32_t kp2 = 72; // Default to 1 to avoid division by zero if applicable
-static int32_t ki1 = 772;
+static int32_t ki1 = 4;
 static int32_t ki2 = 72; // Default to 1 to avoid division by zero if applicable
 
 static volatile int32_t leftError = 0;
@@ -202,11 +202,22 @@ uint32_t *MC_DumpRight(void) {
 // flag indicates if the motor is running. If not, the rev/sec variable is cleared. 
 //
 void MC_PIControlLoop(PIController *L_PI, PIController *R_PI){
+    static uint8_t stall_flag = 0;
+    static uint8_t stall_resume_flag = 0;
     // A bumper press stops the motors and invalidates the capture.
-    if(Bump_In()){
+    if(stall_flag){
+        stall_flag--;
+        if(!stall_flag) {
+            if(!desiredSpeed) stall_resume_flag = 100;
+            else stall_resume_flag = 45000/desiredSpeed;
+        }
+    } else if(!stall_resume_flag && (!Tachometer_GetLeftrpm() || !Tachometer_GetRightrpm())) {
+        stall_flag = 128;
+    }
+    if(stall_resume_flag) stall_resume_flag--;
+    if(Bump_In() || stall_flag){
         Motor_Forward(0, 0);
-        desiredSpeed = 0;
-        openLoopDuty = -1;
+        // openLoopDuty = -1;
         leftActuator = rightActuator = 0;
         leftError = rightError = 0;
         captureRequested = 0;
@@ -228,11 +239,22 @@ void MC_PIControlLoop(PIController *L_PI, PIController *R_PI){
         
         PIController_changeparams(L_PI, kp, ki, desiredSpeed);
         PIController_changeparams(R_PI, kp, ki, desiredSpeed);
-
-        // uint32_t left_control_effort = PIController_update(L_PI, Tachometer_GetLeftrpm());
-        // uint32_t right_control_effort = PIController_update(R_PI, Tachometer_GetLeftrpm());
+        #if FF_MODE == 1
+        uint32_t left_control_effort = PIController_update(L_PI, Tachometer_GetLeftrpm());
+        uint32_t right_control_effort = PIController_update(R_PI, Tachometer_GetRightrpm());
+        leftError = L_PI->prev_error;
+        rightError = R_PI->prev_error;
+        leftActuator = left_control_effort;
+        rightActuator = right_control_effort;
+        Motor_Forward(left_control_effort/5, right_control_effort/5);
+        #elif FF_MODE == 2
         uint32_t ff_control_effort = PIController_invP(L_PI, desiredSpeed/10);
-        Motor_Forward(ff_control_effort, ff_control_effort);
+        leftError = MC_GetLeftSpeed() - desiredSpeed;
+        rightError = MC_GetRightSpeed() - desiredSpeed;
+        leftActuator = ff_control_effort;
+        rightActuator = ff_control_effort;
+        Motor_Forward(ff_control_effort/5, ff_control_effort/5);
+        #endif
     }
 
     // Record one sample per wheel per tick until both buffers are full.

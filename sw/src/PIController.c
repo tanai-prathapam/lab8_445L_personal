@@ -75,8 +75,8 @@ uint32_t PIController_invP(PIController *controller, uint32_t speed_in){
 
 uint16_t PIController_update(PIController *controller, uint32_t speed_in){
   // Update step via bilinear transformation
-  controller->prev_out += (((controller->kpi_plus * (controller->speed_ref - speed_in) / RPM_SCALE + controller->kpi_minus * controller->prev_error) / K_DENOM)>>(K_SHIFT+1)) / T_S;
-  controller->prev_error = controller->speed_ref - speed_in;
+  controller->prev_out += (((controller->kpi_plus * (controller->speed_ref - speed_in) / RPM_SCALE + controller->kpi_minus * (controller->prev_error/RPM_SCALE)) / K_DENOM)>>(K_SHIFT+1)) / T_S;
+  controller->prev_error = (controller->speed_ref - speed_in);
   #if FF_MODE
   // The PI controller does not directly control duty cycle, it controls a 
   // feed-forward approximation of speed that should vary linearly with 
