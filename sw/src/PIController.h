@@ -47,6 +47,8 @@
 
 // Controller structure
 typedef struct{
+  // typical values
+  uint32_t kp, ki;
   // equal to kp + (Ts/2) * ki
   uint32_t kpi_plus;
   // equal to -kp + (Ts/2) * ki
