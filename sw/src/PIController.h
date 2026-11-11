@@ -18,6 +18,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdint.h>
 
 // Defines the time step of the controller. 
 // Convert the time step (in seconds) to floating point binary, then 
@@ -56,7 +57,7 @@ typedef struct{
   // Previous output. Used for bilinear transformation
   uint16_t prev_out;
   // Previous input. Used for bilinear transformation
-  uint16_t prev_error;
+  int64_t prev_error;
   // The target speed. Keep it in parity with the speed measurement of the 
   // tachometer. 
   uint16_t speed_ref;

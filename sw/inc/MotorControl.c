@@ -232,29 +232,29 @@ void MC_PIControlLoop(PIController *L_PI, PIController *R_PI){
             Motor_Forward(dutyCounts, dutyCounts);
             leftActuator = rightActuator = (int32_t)dutyCounts;
         }
+    } else if (desiredSpeed == 0 || stall_flag > 0) {
+        L_PI->prev_error = R_PI->prev_error = 0;
+        L_PI->prev_out = R_PI->prev_out = 0;
+        leftError = rightError = 0;
+        leftActuator = rightActuator = 0;
+        Motor_Forward(0, 0);
     } else {
         // Student 3: run the closed-loop PI update here.
-        uint32_t kp = (kp1 * 72)/kp2;
-        uint32_t ki = (ki1 * 72)/ki2;
+        uint32_t kp = ((uint64_t)kp1 * 72)/kp2;
+        uint32_t ki = ((uint64_t)ki1 * 72)/ki2;
         
         PIController_changeparams(L_PI, kp, ki, desiredSpeed);
         PIController_changeparams(R_PI, kp, ki, desiredSpeed);
-        #if FF_MODE == 1
-        uint32_t left_control_effort = PIController_update(L_PI, Tachometer_GetLeftrpm());
-        uint32_t right_control_effort = PIController_update(R_PI, Tachometer_GetRightrpm());
-        leftError = L_PI->prev_error;
-        rightError = R_PI->prev_error;
-        leftActuator = left_control_effort;
-        rightActuator = right_control_effort;
-        Motor_Forward(left_control_effort/5, right_control_effort/5);
-        #elif FF_MODE == 2
-        uint32_t ff_control_effort = PIController_invP(L_PI, desiredSpeed/10);
-        leftError = MC_GetLeftSpeed() - desiredSpeed;
-        rightError = MC_GetRightSpeed() - desiredSpeed;
-        leftActuator = ff_control_effort;
-        rightActuator = ff_control_effort;
-        Motor_Forward(ff_control_effort/5, ff_control_effort/5);
+        #if FF_MODE == 2
+        leftActuator = PIController_invP(L_PI, desiredSpeed / 10);
+        rightActuator = PIController_invP(R_PI, desiredSpeed / 10);
+        #else
+        leftActuator = PIController_update(L_PI, MC_GetLeftSpeed());
+        rightActuator = PIController_update(R_PI, MC_GetRightSpeed());
         #endif
+        leftError = (int32_t)desiredSpeed - (int32_t)MC_GetLeftSpeed();
+        rightError = (int32_t)desiredSpeed - (int32_t)MC_GetRightSpeed();
+        Motor_Forward(leftActuator, rightActuator); // removed /5 for now just to test
     }
 
     // Record one sample per wheel per tick until both buffers are full.
