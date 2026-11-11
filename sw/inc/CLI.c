@@ -352,7 +352,6 @@ void CLI_Process(void){
     if(c == CR || c == LF){ Enter(); return; }
     if(c == BS || c == DEL){
         if(length != 0){
-            UART_OutChar('\n');
             entry[--length] = '\0'; UART_OutString("\b \b");
         }
         return;
