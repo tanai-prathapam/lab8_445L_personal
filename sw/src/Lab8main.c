@@ -223,8 +223,8 @@ int main(void){ // use main4 to run Lab 8
   MC_Init(); // Initializes motors, tachometers, and bumpers
   TimerG0_IntArm(10000,40,2);
   #if FF_MODE
-    PIController_changeparamsFF(&L_PI, 9863, 772, 1000, L_MOTOR_FFCONFIG);
-    PIController_changeparamsFF(&R_PI, 9863, 772, 1000, R_MOTOR_FFCONFIG);
+    PIController_changeparamsFF(&L_PI, 5, 5, 1000, L_MOTOR_FFCONFIG);
+    PIController_changeparamsFF(&R_PI, 5, 5, 1000, R_MOTOR_FFCONFIG);
   #else
     PIController_changeparams(&L_PI, 9863, 772, 0);
     PIController_changeparams(&R_PI, 9863, 772, 0);

@@ -17,7 +17,7 @@
 #include "../inc/Motor.h"
 #define DIR_L 1
 #define DIR_R (1<<16)
-#define PWM6_PERIOD 50000
+#define PWM6_PERIOD MOTOR_PERIOD
 #define PWM_ACTION     0x0088U     // High at reload, low at compare
 #define PWM_FORCE_LOW  (2U << 28)  // CCACT[29:28] = 10
 #define PWM_FORCE_HIGH (1U << 28)  // CCACT[29:28] = 01

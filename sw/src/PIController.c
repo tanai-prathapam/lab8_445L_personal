@@ -80,7 +80,7 @@ uint32_t PIController_invP(PIController *controller, uint32_t speed_in){
 #endif
 
 uint16_t PIController_update(PIController *controller, uint32_t speed_in){
-  if (controller->speed_ref == 0) {
+  if (controller->speed_ref == 0) { // just exist
       controller->prev_error = 0;
       controller->prev_out = 0;
       return 0;

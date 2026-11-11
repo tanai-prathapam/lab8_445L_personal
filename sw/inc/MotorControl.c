@@ -203,13 +203,15 @@ uint32_t *MC_DumpRight(void) {
 //
 void MC_PIControlLoop(PIController *L_PI, PIController *R_PI){
     static uint8_t stall_flag = 0;
-    static uint8_t stall_resume_flag = 0;
+    static uint16_t stall_resume_flag = 0;
     // A bumper press stops the motors and invalidates the capture.
-    if(stall_flag){
+    if(openLoopDuty >= 0 || desiredSpeed == 0){
+        stall_flag = 0;
+        stall_resume_flag = 128;
+    } else if(stall_flag){
         stall_flag--;
         if(!stall_flag) {
-            if(!desiredSpeed) stall_resume_flag = 100;
-            else stall_resume_flag = 45000/desiredSpeed;
+            stall_resume_flag = 45000/desiredSpeed;
         }
     } else if(!stall_resume_flag && (!Tachometer_GetLeftrpm() || !Tachometer_GetRightrpm())) {
         stall_flag = 128;
@@ -220,6 +222,8 @@ void MC_PIControlLoop(PIController *L_PI, PIController *R_PI){
         // openLoopDuty = -1;
         leftActuator = rightActuator = 0;
         leftError = rightError = 0;
+        L_PI->prev_error = R_PI->prev_error = 0;
+        L_PI->prev_out = R_PI->prev_out = 0;
         captureRequested = 0;
         controlTime = 0;
         return;
@@ -228,11 +232,11 @@ void MC_PIControlLoop(PIController *L_PI, PIController *R_PI){
     // Apply the fixed PWM once, on the first tick of the capture.
     if(openLoopDuty >= 0){
         if(controlTime == 0){
-            uint32_t dutyCounts = MOTOR_PERIOD * (uint32_t)openLoopDuty / 100U;
+            uint32_t dutyCounts = MOTOR_PERIOD * (uint32_t)openLoopDuty / 100;
             Motor_Forward(dutyCounts, dutyCounts);
             leftActuator = rightActuator = (int32_t)dutyCounts;
         }
-    } else if (desiredSpeed == 0 || stall_flag > 0) {
+    } else if (desiredSpeed == 0) {
         L_PI->prev_error = R_PI->prev_error = 0;
         L_PI->prev_out = R_PI->prev_out = 0;
         leftError = rightError = 0;
