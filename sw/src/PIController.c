@@ -80,26 +80,35 @@ uint32_t PIController_invP(PIController *controller, uint32_t speed_in){
 #endif
 
 uint16_t PIController_update(PIController *controller, uint32_t speed_in){
-  if (controller->speed_ref == 0) { // just exist
+  // Stop the motor and clear its saved correction when the target is zero.
+  if (controller->speed_ref == 0) {
       controller->prev_error = 0;
       controller->prev_out = 0;
       return 0;
   }
 
+  // Keep extra precision during calculations and set the normal output limit.
   const int64_t scale = K_DENOM << K_SHIFT;
   int64_t max_output = MOTORMAX;
 #if FF_MODE
+  // Stop if the motor model has not been initialized.
   if (controller->ff_a == 0) return 0;
+  // Find the largest speed request the motor model can handle.
   int64_t divisor = 2500 * controller->ff_a;
   max_output = ((int64_t)controller->ff_c + divisor - 1) / divisor;
 #endif
+  // Put the output limit on the same scale as the calculations.
   const int64_t limit = max_output * scale;
+  // Find how far the measured speed is below or above the target.
   int64_t error = (int64_t)controller->speed_ref - speed_in;
+  // Accumulate a correction for speed differences that persist over time.
   int64_t integral = controller->ki == 0 ? 0 : controller->prev_error + (int64_t)controller->ki * error;
-  if (integral > limit) integral = limit;
+  if (integral > limit) integral = limit; // safety checks
   if (integral < -limit) integral = -limit;
 
+  // Combine the immediate speed correction with the accumulated correction.
   int64_t command = (int64_t)controller->kp * error + integral;
+  // Save the correction unless it would push farther past an output limit.
   if (controller->ki == 0 || !((command > limit && error > 0) || (command < 0 && error < 0))) {
     controller->prev_error = integral;
   }

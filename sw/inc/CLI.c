@@ -110,23 +110,23 @@ void CLI_SystemStatus(void) {
     UART_OutString(" U(raw)="); UART_OutSDec(s.rightU); UART_OutString("\r\n");
 
     // --- debug
-    UART_OutString("LOAD=");
-    UART_OutUDec(TIMA1->COUNTERREGS.LOAD);
-    UART_OutString(" CC0=");
-    UART_OutUDec(TIMA1->COUNTERREGS.CC_01[0]);
-    UART_OutString(" CC1=");
-    UART_OutUDec(TIMA1->COUNTERREGS.CC_01[1]);
-    UART_OutString("\r\nACTION0=");
-    UART_OutUDec(TIMA1->COUNTERREGS.CCACT_01[0]);
-    UART_OutString(" ACTION1=");
-    UART_OutUDec(TIMA1->COUNTERREGS.CCACT_01[1]);
-    UART_OutString("\r\nCTRCTL=");
-    UART_OutUDec(TIMA1->COUNTERREGS.CTRCTL);
-    UART_OutString(" CCLKCTL=");
-    UART_OutUDec(TIMA1->COMMONREGS.CCLKCTL);
-    UART_OutString(" CTR=");
-    UART_OutUDec(TIMA1->COUNTERREGS.CTR);
-    UART_OutString("\r\n");
+    // UART_OutString("LOAD=");
+    // UART_OutUDec(TIMA1->COUNTERREGS.LOAD);
+    // UART_OutString(" CC0=");
+    // UART_OutUDec(TIMA1->COUNTERREGS.CC_01[0]);
+    // UART_OutString(" CC1=");
+    // UART_OutUDec(TIMA1->COUNTERREGS.CC_01[1]);
+    // UART_OutString("\r\nACTION0=");
+    // UART_OutUDec(TIMA1->COUNTERREGS.CCACT_01[0]);
+    // UART_OutString(" ACTION1=");
+    // UART_OutUDec(TIMA1->COUNTERREGS.CCACT_01[1]);
+    // UART_OutString("\r\nCTRCTL=");
+    // UART_OutUDec(TIMA1->COUNTERREGS.CTRCTL);
+    // UART_OutString(" CCLKCTL=");
+    // UART_OutUDec(TIMA1->COMMONREGS.CCLKCTL);
+    // UART_OutString(" CTR=");
+    // UART_OutUDec(TIMA1->COUNTERREGS.CTR);
+    // UART_OutString("\r\n");
 }
 
 static void Prompt(void) {

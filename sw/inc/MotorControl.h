@@ -227,4 +227,9 @@ int32_t MC_GetOpenLoopDuty(void);
 uint8_t MC_HasCapture(void);
 uint8_t MC_SetOpenLoopDuty(uint32_t dutyPct);
 
+#if FF_MODE
+// initialization function for FF mode
+void MC_PIController_changeparamsFF(PIController *controller, uint32_t kp, uint32_t ki, uint16_t speed_ref, uint32_t ff_a, uint32_t ff_b, uint32_t ff_c);
+#endif
+
 #endif

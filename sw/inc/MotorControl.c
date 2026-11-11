@@ -195,6 +195,23 @@ uint32_t *MC_DumpLeft(void) {
 uint32_t *MC_DumpRight(void) {
     return rightSpeedDump;
 }
+
+#if FF_MODE == 1
+// -- middle man functions to store variables in this controller
+void MC_PIController_changeparamsFF(PIController *controller, uint32_t kp_in, uint32_t ki_in, uint16_t speed_ref, uint32_t ff_a, uint32_t ff_b, uint32_t ff_c){
+    kp1 = kp_in;
+    ki1 = ki_in;
+    desiredSpeed = speed_ref;
+    PIController_changeparamsFF(controller, kp_in, ki_in, speed_ref, ff_a, ff_b, ff_c);
+}
+#endif
+
+void MC_PIController_changeparams(PIController *controller, uint32_t kp_in, uint32_t ki_in, uint16_t speed_ref) {
+    kp1 = kp_in;
+    ki1 = ki_in;
+    desiredSpeed = speed_ref;
+    PIController_changeparams(controller, kp_in, ki_in, speed_ref);
+}
    
 // --------------------   MC_PIControlLoop    ----------------------------------
 //
