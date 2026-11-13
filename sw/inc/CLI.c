@@ -19,6 +19,7 @@
 #include <ti/devices/msp/msp.h>
 #include "CLI.h"
 #include "UART.h"
+#include "PIController.h"
 #include "MotorControl.h"
 
 #define DUMPSIZE 200 // 200 speed samples per motor. At 100 Hz, that is approx 2 seconds of data
@@ -37,6 +38,7 @@ typedef struct {
     int32_t dutyPct, kp1, kp2, ki1, ki2, leftE, rightE, leftU, rightU;
 } Status;
 
+static PIController *L_PI, *R_PI;
 static Field field;
 static char entry[12]; // sign + 10 decimal digits + terminator
 static uint32_t length;
@@ -133,7 +135,16 @@ static void Prompt(void) {
     static const char *const names[6] = {
         "speed (whole RPM)", "Kp1", "Kp2 (>0)", "Ki1", "Ki2 (>0)", "open-loop duty (whole %)"
     };
-    if(field == 0) UART_OutChar('\n');
+    if(field == 0) {
+        UART_OutChar('\n');
+        #if FF_MODE == 1
+            MC_PIController_changeparamsFF_Controller(L_PI, L_MOTOR_FFCONFIG);
+            MC_PIController_changeparamsFF_Controller(R_PI, R_MOTOR_FFCONFIG);
+        #else
+            MC_PIController_changeparams(L_PI);
+            MC_PIController_changeparams(R_PI);
+        #endif
+    }
     UART_OutString("Enter new "); UART_OutString(names[field]); UART_OutString(": "); UART_OutString(entry);
 }
 
@@ -141,7 +152,9 @@ static void Prompt(void) {
 // Configure UART0 for serial full duplex operation
 // Inputs: none
 // Outputs: none
-void CLI_Init(void) {
+void CLI_Init(PIController *L_PI_in, PIController *R_PI_in) {
+    R_PI = R_PI_in;
+    L_PI = L_PI_in;
     UART_Init();
     field = SPEED;
     skipLF = dumping = 0;

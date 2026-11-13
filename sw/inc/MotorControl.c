@@ -204,6 +204,11 @@ void MC_PIController_changeparamsFF(PIController *controller, uint32_t kp_in, ui
     desiredSpeed = speed_ref;
     PIController_changeparamsFF(controller, kp_in, ki_in, speed_ref, ff_a, ff_b, ff_c);
 }
+void MC_PIController_changeparamsFF_Controller(PIController *controller, uint32_t ff_a, uint32_t ff_b, uint32_t ff_c){
+    uint32_t kp = (kp1*72)/kp2;
+    uint32_t ki = (ki1*72)/ki2;
+    PIController_changeparamsFF(controller, kp, ki, desiredSpeed, ff_a, ff_b, ff_c);
+}
 #endif
 
 void MC_PIController_changeparams(PIController *controller, uint32_t kp_in, uint32_t ki_in, uint16_t speed_ref) {
@@ -211,6 +216,11 @@ void MC_PIController_changeparams(PIController *controller, uint32_t kp_in, uint
     ki1 = ki_in;
     desiredSpeed = speed_ref;
     PIController_changeparams(controller, kp_in, ki_in, speed_ref);
+}
+void MC_PIController_changeparams_Controller(PIController *controller) {
+    uint32_t kp = (kp1*72)/kp2;
+    uint32_t ki = (ki1*72)/ki2;
+    PIController_changeparams(controller, kp, ki, desiredSpeed);
 }
    
 // --------------------   MC_PIControlLoop    ----------------------------------

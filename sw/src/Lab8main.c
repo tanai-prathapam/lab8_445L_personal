@@ -231,7 +231,7 @@ int main(void){ // use main4 to run Lab 8
     MC_PIController_changeparams(&R_PI, 9863, 772, starter_RPM_to_send);
   #endif
   __enable_irq();
-  CLI_Init();
+  CLI_Init(&L_PI, &R_PI);
   while(1){
     CLI_Process();
     uint32_t rightRPM = Tachometer_GetRightrpm();

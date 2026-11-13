@@ -19,12 +19,13 @@
 #define LAB8_CLI_H
 
 #define CLI_MAX_SPEED_RPM 200 // change to more accurate upper limit
+#include "PIController.h"
 
 //-------------------   CLI_Init  -------------------
 // Configure UART0 for serial full duplex operation
 // Inputs: none
 // Outputs: none
-void CLI_Init(void);
+void CLI_Init(PIController *L_PI_in, PIController *R_PI_in);
 
 // Outputs status to UART0
 void CLI_SystemStatus(void);
