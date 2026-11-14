@@ -21,6 +21,22 @@
 
 #define DEBUG_MODE 0
 
+// Deliverable 7 variables
+// Collect 1,000 controller timings before stopping.
+#define PROFILE_TARGET_SAMPLES 1000U
+
+// Set this to 1 in the debugger to start measuring.
+volatile uint8_t ProfileEnable = 0;
+
+// Store the number of completed measurements.
+volatile uint32_t ProfileSamples = 0;
+
+// Store the combined execution time in timer ticks.
+volatile uint32_t ProfileTotalTicks = 0;
+
+// Store the longest measured execution time.
+volatile uint32_t ProfileMaxTicks = 0;
+
 // Watch these variables in the debugger.
 // Units are 0.1 RPM.
 volatile uint32_t LeftSpeed;
@@ -254,7 +270,29 @@ void TIMG0_IRQHandler(void){
     LeftSpeed = Tachometer_GetLeftrpm();
     RightSpeed = Tachometer_GetRightrpm();
     #if DEBUG_MODE == 4 || DEBUG_MODE == 0
+      // deliverable 7 code
+      uint32_t profileStart = TIMG0->COUNTERREGS.CTR;
       MC_PIControlLoop(&L_PI, &R_PI);
+      uint32_t profileEnd = TIMG0->COUNTERREGS.CTR;
+
+      // Save timings only while the measurement is enabled.
+      if(ProfileEnable && ProfileSamples < PROFILE_TARGET_SAMPLES){
+        // Calculate elapsed ticks, allowing one timer reload.
+        uint32_t profilePeriod = TIMG0->COUNTERREGS.LOAD + 1U;
+        uint32_t elapsedTicks = (profileStart >= profileEnd) ? (profileStart - profileEnd) : (profileStart + profilePeriod - profileEnd);
+
+        // Accumulate the total time and remember the longest update.
+        ProfileTotalTicks += elapsedTicks;
+        if(elapsedTicks > ProfileMaxTicks){
+          ProfileMaxTicks = elapsedTicks;
+        }
+
+        // Stop automatically after collecting all measurements.
+        ProfileSamples++;
+        if(ProfileSamples == PROFILE_TARGET_SAMPLES){
+          ProfileEnable = 0;
+        }
+      }
     #endif
   }
 }
